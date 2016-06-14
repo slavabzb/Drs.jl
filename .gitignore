@@ -1,0 +1,6 @@
+*.pyc
+*.c
+*.h
+*.DS_Store
+*.cov
+.ipynb_checkpoints/
