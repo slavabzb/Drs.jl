@@ -1,0 +1,10 @@
+language: julia
+os:
+    - linux
+julia:
+    - 0.4
+    - nightly
+script:
+    julia -e 'Pkg.clone("https://github.com/lpsusu/lplib.git")'
+    julia -e 'Pkg.test("lplib", coverage=true)'
+
