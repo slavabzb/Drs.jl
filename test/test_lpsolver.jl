@@ -1,7 +1,5 @@
-# julia test module example
-# remove or replace it with actual one
-
-using Base.Test
+# getting instance
+LPSolver()
 
 # testing equality
 @test 1 == 1

@@ -1,8 +1,15 @@
 using Base.Test
 
-tests = ["test"]
+solvers = Any[]
 
-for test in tests
-	include("$(test).jl")
+if isdir(Pkg.dir("LPLib"))
+	importall LPLib.LPSolverInterface
+	push!(solvers, LPSolver)
+end
+
+for test in readdir("test")
+	if ismatch(r"^(?(?=runtests)$|.+\.jl$)", test)
+		include("$(test)")
+	end
 end
 

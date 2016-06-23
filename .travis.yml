@@ -1,10 +1,11 @@
 language: julia
 os:
     - linux
+    - osx
 julia:
     - 0.4
     - nightly
 script:
-    julia -e 'Pkg.clone("https://github.com/lpsusu/lplib.git")'
-    julia -e 'Pkg.test("lplib", coverage=true)'
+    julia -e 'Pkg.clone("https://github.com/lpsusu/lplib.git", "LPLib")'
+    julia -e 'Pkg.test("LPLib", coverage=true)'
 
