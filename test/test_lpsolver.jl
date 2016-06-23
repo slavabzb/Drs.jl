@@ -1,5 +1,8 @@
-# getting instance
-LPSolver()
+using MathProgBase
+using LPLib
+
+# solve problem
+sol = linprog([-1.0, -1.0], [1.0 2.0], '<', 1.0, LPSolver())
 
 # testing equality
 @test 1 == 1
