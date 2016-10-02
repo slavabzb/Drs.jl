@@ -2,7 +2,16 @@ using MathProgBase
 using LPLib
 
 # solve problem
-sol = linprog([-1.0, -1.0], [1.0 2.0], '<', 1.0, LPSolver())
+c = Float64[-3, -5]
+b = Float64[180, 150, 300]
+A = Float64[1 0; 0 2; 3 2]
+sense = ['<', '<', '<']
+lower_bounds = -Inf
+upper_bounds = Inf
+
+sol = linprog(c, A, sense, b, lower_bounds, upper_bounds, LPSolver())
+
+println(sol)
 
 # testing equality
 @test 1 == 1
