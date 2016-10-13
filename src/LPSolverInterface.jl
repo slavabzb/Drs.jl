@@ -16,7 +16,7 @@ type LPMathProgModel <: AbstractLinearQuadraticModel
 	b			# Porb data: rhs
 	c			# Porb data: coefficient for objective function
 	
-	inq			# m dimentional vector; 1 for >=; 0 for ==; -1 for <=
+	inq			# m dimentional vector; 1 for >; 0 for =; -1 for <
 	
 	m			# Number of constraints
 	n			# Number of variables
@@ -56,23 +56,31 @@ LinearQuadraticModel(s::LPSolver) = LPMathProgModel(;s.options...)
 
 function loadproblem!(m::LPMathProgModel, A, collb, colub, obj, rowlb, rowub, sense)
 	println("loadproblem")
+	println("A ", A)
+	println("collb ", collb)
+	println("colub ", colub)
+	println("obj ", obj)
+	println("rowlb ", rowlb)
+	println("rowub ", rowub)
+	println("sense ", sense)
 	
 	m.sense = sense
-	println("m.sense ", m.sense)
 	
 	if m.sense == Symbol("Max")
 		obj = -obj
 		println("obj ", obj)
 	end
 	
-	b_Neg = rowub .< 0
-	println("b_Neg ", b_Neg)
+	prepare!(m, rowlb, rowub)
 	
 	m.A = A
 	println("m.A ", m.A)
 	
-	m.b = rowub
-	println("m.b ", m.b)
+	checkNegative!(m)
+	
+	m.m, m.n = size(m.A)
+	println("m.m ", m.m)
+	println("m.n ", m.n)
 	
 	m.c = obj
 	println("m.c ", m.c)
@@ -80,19 +88,103 @@ function loadproblem!(m::LPMathProgModel, A, collb, colub, obj, rowlb, rowub, se
 	m.M = ceil(max(norm(m.A), norm(m.b))/100)*100
 	println("m.M ", m.M)
 	
-	m.m, m.n = size(m.A)
-	println("m.m ", m.m)
-	println("m.n ", m.n)
-	
 	m.basis = zeros(1, m.m)
 	println("m.basis ", m.basis)
 	
 	m.terminate = 0
 	m.counter = 0
+	
+	transformToStandardForm!(m)
+	initialize!(m)
+	
+	println("m.b ", m.b)
+end
+
+function prepare!(m::LPMathProgModel, rowlb, rowub)
+	# Merge lower_bounds and upper_bounds to single b
+	# Set inq array
+	
+	n = length(rowlb)
+	
+	m.inq = zeros(n)
+	m.b = rowub
+	
+	for i in 1:n
+		if rowlb[i] == -Inf
+			m.inq[i] = -1
+		elseif rowub[i] == Inf
+			m.inq[i] = 1
+			m.b[i] = rowlb[i]
+		end
+	end
+
+	println("m.inq ", m.inq)
+end
+
+function checkNegative!(m::LPMathProgModel)
+	# Check if b is negative
+	
+	b_Neg = [x ? 1 : 0 for x in (m.b .< 0)]
+	println("b_Neg ", b_Neg)
+	
+	for (i, x) in enumerate(b_Neg)
+		if x == 1
+			m.inq[i] = -m.inq[i]
+			m.b[i] = -m.b[i]
+			m.A[i,:] = -m.A[i,:]
+		end
+	end
+end
+
+function transformToStandardForm!(m::LPMathProgModel)
+	# Add slack variables
+	
+	n_slack = sum(m.inq .< 0) + sum(m.inq .> 0)
+	println("n_slack ", n_slack)
+	
+	m.A = [m.A zeros(m.m, n_slack)]
+	println("m.A ", m.A)
+	
+	m.c = [m.c; zeros(n_slack, 1)]
+	println("m.c ", m.c)
+	
+	idx_slack = m.n + 1
+	for i in 1:m.m
+		if m.inq[i] == 1
+			m.A[i, idx_slack] = -1
+		elseif m.inq[i] == -1
+			m.A[i, idx_slack] = 1
+		end
+		idx_slack += 1
+	end
+	
+	updateDimension!(m)
+end
+
+function updateDimension!(m::LPMathProgModel)
+	m.n = size(m.A)[2]
+	println("updateDimension m.n ", m.n)
+end
+
+function initialize!(m::LPMathProgModel)
+	# Find potential basis
+	for i in 1:m.n
+		column = m.A[:,i]
+		if countnz(column) == 1
+			row_number = find(x -> x == 1, m.A[:,i])
+			if !isempty(row_number)
+				# Add the col if the current row has not been selected
+				if m.basis[row_number] == [0]
+					m.basis[row_number] = i;
+				end
+			end
+		end
+	end
+	println("m.basis ", m.basis)
 end
 
 function optimize!(m::LPMathProgModel)
-println("optimize")
+	println("optimize ")
 end
 
 function status(m::LPMathProgModel)
