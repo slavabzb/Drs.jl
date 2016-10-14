@@ -181,10 +181,57 @@ function initialize!(m::LPMathProgModel)
 		end
 	end
 	println("m.basis ", m.basis)
+	
+	# Add big M if necessary
+	n_artfVar = m.m - sum(m.basis .> 0)
+	println("n_artfVar ", n_artfVar)
+	
+	if n_artfVar > 0
+		# Record the index for artificial variables
+		m.A = [m.A zeros(m.m, n_artfVar)]
+		
+		add_to_rows = find(x -> x == 0, m.basis)
+		
+		# Formulate matrix A with newly added artificial vars
+		for i in 1:length(add_to_rows)
+			m.A[add_to_rows[i], m.n + i] = 1
+			m.basis[add_to_rows[i]] = m.n + i
+		end
+		
+		m.c = [m.c; m.M * ones(n_artfVar, 1)]
+	end
+	
+	m.nonbasis = setdiff(1:m.m, m.basis)
+	updateDimension!(m)
+	
+	m.x = zeros(m.n, 1)
+	println("m.x ", m.x)
+	
+	basis_ids = trunc(Int, m.basis[:])
+	println("basis_ids ", basis_ids)
+	
+	println("lhs ", m.A[:,basis_ids])
+	println("rhs ", m.b)
+	
+	m.x[basis_ids] = m.A[:,basis_ids] \ m.b
+	println("m.x ", m.x)
+	
+	m.d = m.c - m.A' * m.c[basis_ids]
+	println("m.d ", m.d)
+	
+	m.z = 0
 end
 
 function optimize!(m::LPMathProgModel)
 	println("optimize ")
+	
+	while m.terminate == 0
+		
+		m.terminate = 1
+		if m.terminate == 1
+			break
+		end
+	end
 end
 
 function status(m::LPMathProgModel)
