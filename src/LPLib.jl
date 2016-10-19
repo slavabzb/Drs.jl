@@ -1,8 +1,8 @@
 module LPLib
 
-include(joinpath(dirname(@__FILE__), "LPSolverInterface.jl"))
+include("LPSolverInterface.jl")
 
+using .LPSolverInterface.LPSolver
 export LPSolver
 
 end
-
