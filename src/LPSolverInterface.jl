@@ -40,7 +40,7 @@ type LPMathProgModel <: AbstractLinearQuadraticModel
 	nonbasis	# Current nonbasis
 	M			# Big M
 	counter		# Iteration counter
-	terminate	# Flag for termination: 1 terminate; 0 continue
+	terminate	# Flag for termination: true - terminate; false - continue
 	status		# maxIter, unbounded, infeasible, optimal
 	
 	maxIter		# Max number of iterations
@@ -91,7 +91,7 @@ function loadproblem!(m::LPMathProgModel, A, collb, colub, obj, rowlb, rowub, se
 	m.basis = zeros(1, m.m)
 	println("m.basis ", m.basis)
 	
-	m.terminate = 0
+	m.terminate = false
 	m.counter = 0
 	
 	transformToStandardForm!(m)
@@ -225,7 +225,7 @@ end
 function incrementCounter!(m::LPMathProgModel)
 	m.counter += 1
 	if m.counter == m.maxIter
-		m.terminate = 1
+		m.terminate = true
 		m.status = "maxIter"
 	end
 end
@@ -251,7 +251,7 @@ function chooseNonBasisVarToEnterBasis!(m::LPMathProgModel)
 	nonbasis_ids = trunc(Int, m.nonbasis[:])
 	m.dNq = minimum(m.d[nonbasis_ids])
 	if m.dNq >= 0
-		m.terminate = 1
+		m.terminate = true
 		m.status = "optimal"
 		if m.sense == Symbol("Max")
 			m.fval = -m.z
@@ -280,7 +280,7 @@ function findBasisVarToLeaveBasis!(m::LPMathProgModel)
 	println("indx ", indx)
 	
 	if isinf(m.sigma)
-		m.terminate = 1
+		m.terminate = true
 		m.status = "unbounded"
 	end
 	
@@ -312,7 +312,7 @@ end
 function optimize!(m::LPMathProgModel)
 	println("optimize ")
 	
-	while m.terminate == 0
+	while !m.terminate
 		incrementCounter!(m)
 		computeDualVars!(m)
 		priceNonBasicVars!(m)
@@ -321,11 +321,6 @@ function optimize!(m::LPMathProgModel)
 		findBasisVarToLeaveBasis!(m)
 		updateStep!(m)
 		updateBasis!(m)
-		
-		#m.terminate = 1
-		if m.terminate == 1
-			break
-		end
 	end
 end
 
