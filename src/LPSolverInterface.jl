@@ -66,7 +66,7 @@ function loadproblem!(m::LPMathProgModel, A, collb, colub, obj, rowlb, rowub, se
 	
 	m.sense = sense
 	
-	if m.sense == Symbol("Max")
+	if m.sense == :Max
 		obj = -obj
 		println("obj ", obj)
 	end
@@ -226,7 +226,7 @@ function incrementCounter!(m::LPMathProgModel)
 	m.counter += 1
 	if m.counter == m.maxIter
 		m.terminate = true
-		m.status = "maxIter"
+		m.status = :UserLimit
 	end
 end
 
@@ -252,8 +252,8 @@ function chooseNonBasisVarToEnterBasis!(m::LPMathProgModel)
 	m.dNq = minimum(m.d[nonbasis_ids])
 	if m.dNq >= 0
 		m.terminate = true
-		m.status = "optimal"
-		if m.sense == Symbol("Max")
+		m.status = :Optimal
+		if m.sense == :Max
 			m.fval = -m.z
 		else
 			m.fval = m.z
@@ -281,7 +281,7 @@ function findBasisVarToLeaveBasis!(m::LPMathProgModel)
 	
 	if isinf(m.sigma)
 		m.terminate = true
-		m.status = "unbounded"
+		m.status = :Unbounded
 	end
 	
 	m.t = m.basis[indx]
