@@ -222,12 +222,107 @@ function initialize!(m::LPMathProgModel)
 	m.z = 0
 end
 
+function incrementCounter!(m::LPMathProgModel)
+	m.counter += 1
+	if m.counter == m.maxIter
+		m.terminate = 1
+		m.status = "maxIter"
+	end
+end
+
+function computeDualVars!(m::LPMathProgModel)
+	# BTRAN
+	basis_ids = trunc(Int, m.basis[:])
+	m.y = inv(m.A[:,basis_ids])' * m.c[basis_ids]
+	println("m.y ", m.y)
+end
+
+function priceNonBasicVars!(m::LPMathProgModel)
+	# PRICE
+	basis_ids = trunc(Int, m.basis[:])
+	nonbasis_ids = trunc(Int, m.nonbasis[:])
+	m.d[nonbasis_ids] = m.c[nonbasis_ids] - m.A[:,nonbasis_ids]' * m.y
+	m.d[basis_ids] = 0
+	println("m.d ", m.d)
+end
+
+function chooseNonBasisVarToEnterBasis!(m::LPMathProgModel)
+	# CHUZC
+	nonbasis_ids = trunc(Int, m.nonbasis[:])
+	m.dNq = minimum(m.d[nonbasis_ids])
+	if m.dNq >= 0
+		m.terminate = 1
+		m.status = "optimal"
+		if m.sense == Symbol("Max")
+			m.fval = -m.z
+		else
+			m.fval = m.z
+		end
+	else
+		m.q = findfirst(x -> x == m.dNq, m.d[nonbasis_ids])
+		m.q = Int(m.nonbasis[m.q])
+		println("m.q ", m.q)
+	end
+end
+
+function findUpdatedCol!(m::LPMathProgModel)
+	# FTRAN
+	basis_ids = trunc(Int, m.basis[:])
+	m.updCol = m.A[:,basis_ids] \ m.A[:,m.q]
+	println("m.updCol ", m.updCol)
+end
+
+function findBasisVarToLeaveBasis!(m::LPMathProgModel)
+	# CHUZR
+	basis_ids = trunc(Int, m.basis[:])
+	m.sigma, indx = findmin(m.x[basis_ids] ./ m.updCol)
+	println("m.sigma ", m.sigma)
+	println("indx ", indx)
+	
+	if isinf(m.sigma)
+		m.terminate = 1
+		m.status = "unbounded"
+	end
+	
+	m.t = m.basis[indx]
+	println("m.t ", m.t)
+end
+
+function updateStep!(m::LPMathProgModel)
+	e = zeros(m.n, 1)
+	e[m.q] = 1
+	
+	basis_ids = trunc(Int, m.basis[:])
+	nonbasis_ids = trunc(Int, m.nonbasis[:])
+	
+	m.x[basis_ids] = m.x[basis_ids] - m.sigma * m.updCol
+	m.x[nonbasis_ids] = m.x[nonbasis_ids] + m.sigma * e[nonbasis_ids]
+	
+	m.z = m.z + m.dNq * m.sigma
+	println("m.z ", m.z)
+end
+
+function updateBasis!(m::LPMathProgModel)
+	m.basis[find(x -> x == m.t, m.basis)] = m.q
+	println("m.basis ", m.basis)
+	m.nonbasis[find(x -> x == m.q, m.nonbasis)] = m.t
+	println("m.nonbasis ", m.nonbasis)
+end
+
 function optimize!(m::LPMathProgModel)
 	println("optimize ")
 	
 	while m.terminate == 0
+		incrementCounter!(m)
+		computeDualVars!(m)
+		priceNonBasicVars!(m)
+		chooseNonBasisVarToEnterBasis!(m)
+		findUpdatedCol!(m)
+		findBasisVarToLeaveBasis!(m)
+		updateStep!(m)
+		updateBasis!(m)
 		
-		m.terminate = 1
+		#m.terminate = 1
 		if m.terminate == 1
 			break
 		end
@@ -235,7 +330,9 @@ function optimize!(m::LPMathProgModel)
 end
 
 function status(m::LPMathProgModel)
-println("status")
+	println("status ", m.status)
+	println("m.x ", m.x)
+	println("m.fval ", m.fval)
 end
 
 end
