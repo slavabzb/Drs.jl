@@ -9,7 +9,19 @@ sense = ['<', '<', '<']
 lower_bounds = -Inf
 upper_bounds = Inf
 
-sol = linprog(c, A, sense, b, lower_bounds, upper_bounds, LPSolver())
+#sol = linprog(c, A, sense, b, lower_bounds, upper_bounds, LPSolver())
+
+#println(sol)
+
+A = Float64[0.4 0.2; 0.4 0.3; 0.2 0.5; 1.0 1.0]
+b = Float64[10, 12, 10, 28]
+c = Float64[-400, -300]
+
+sense = ['<', '<', '<', '<']
+lower_bounds = -Inf
+upper_bounds = Inf
+
+sol = linprog(c, A, sense, b, lower_bounds, upper_bounds, LPSolver(sense=:Max))
 
 println(sol)
 

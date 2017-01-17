@@ -12,9 +12,9 @@ type LPMathProgModel <: AbstractLinearQuadraticModel
 	options
 	
 	# Problem data
-	A			# Porb data: coefficient matrix for constraints
-	b			# Porb data: rhs
-	c			# Porb data: coefficient for objective function
+	A			# Prob data: coefficient matrix for constraints
+	b			# Prob data: rhs
+	c			# Prob data: coefficient for objective function
 	
 	inq			# m dimentional vector; 1 for >; 0 for =; -1 for <
 	
@@ -63,13 +63,9 @@ function loadproblem!(m::LPMathProgModel, A, collb, colub, obj, rowlb, rowub, se
 	println("rowlb ", rowlb)
 	println("rowub ", rowub)
 	println("sense ", sense)
+	println("model ", m)
 	
 	m.sense = sense
-	
-	if m.sense == :Max
-		obj = -obj
-		println("obj ", obj)
-	end
 	
 	prepare!(m, rowlb, rowub)
 	
