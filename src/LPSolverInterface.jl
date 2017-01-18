@@ -2,7 +2,7 @@ module LPSolverInterface
 
 importall MathProgBase.SolverInterface
 
-export LPSolver
+#export LPSolver
 immutable LPSolver <: AbstractMathProgSolver
 	options
 end
@@ -324,6 +324,21 @@ function status(m::LPMathProgModel)
 	println("status ", m.status)
 	println("m.x ", m.x)
 	println("m.fval ", m.fval)
+	m.status
+end
+
+function getreducedcosts(m::LPMathProgModel)
+end
+
+function getconstrduals(m::LPMathProgModel)
+end
+
+function getobjval(m::LPMathProgModel)
+	m.fval
+end
+
+function getsolution(m::LPMathProgModel)
+	m.x'
 end
 
 end
