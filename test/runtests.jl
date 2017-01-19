@@ -1,3 +1,5 @@
+#!/usr/bin/env julia
+
 using Base.Test
 
 DIR = dirname(@__FILE__())
