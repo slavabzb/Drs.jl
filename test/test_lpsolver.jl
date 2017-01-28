@@ -1,6 +1,8 @@
 using MathProgBase
 using LPLib
 
+logLevel=OFF
+
 A = Float64[1 0; 0 2; 3 2]
 b = Float64[180, 150, 300]
 c = Float64[-3, -5]
@@ -9,7 +11,7 @@ sense = ['<', '<', '<']
 lower_bounds = -Inf
 upper_bounds = Inf
 
-sol = linprog(c, A, sense, b, lower_bounds, upper_bounds, LPSolver(logLevel=OFF))
+sol = linprog(c, A, sense, b, lower_bounds, upper_bounds, LPSolver(logLevel=logLevel))
 
 @test sol.status == :Optimal
 @test sol.objval == -525
@@ -25,7 +27,7 @@ sense = ['<', '<', '<', '<']
 lower_bounds = -Inf
 upper_bounds = Inf
 
-sol = linprog(c, A, sense, b, lower_bounds, upper_bounds, LPSolver(logLevel=OFF))
+sol = linprog(c, A, sense, b, lower_bounds, upper_bounds, LPSolver(logLevel=logLevel))
 
 @test sol.status == :Optimal
 @test sol.objval == -10600
@@ -41,7 +43,7 @@ sense = ['<', '<', '<']
 lower_bounds = -Inf
 upper_bounds = Inf
 
-sol = linprog(c, A, sense, b, lower_bounds, upper_bounds, LPSolver(logLevel=OFF))
+sol = linprog(c, A, sense, b, lower_bounds, upper_bounds, LPSolver(logLevel=logLevel))
 
 @test sol.status == :Optimal
 @test_approx_eq(sol.objval, -5.142857142857142)

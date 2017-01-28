@@ -9,4 +9,3 @@ for test in readdir(DIR)
 		include("$(test)")
 	end
 end
-
