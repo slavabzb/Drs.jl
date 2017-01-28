@@ -9,7 +9,7 @@ sense = ['<', '<', '<']
 lower_bounds = -Inf
 upper_bounds = Inf
 
-sol = linprog(c, A, sense, b, lower_bounds, upper_bounds, LPSolver())
+sol = linprog(c, A, sense, b, lower_bounds, upper_bounds, LPSolver(logLevel=OFF))
 
 @test sol.status == :Optimal
 @test sol.objval == -525
@@ -25,7 +25,7 @@ sense = ['<', '<', '<', '<']
 lower_bounds = -Inf
 upper_bounds = Inf
 
-sol = linprog(c, A, sense, b, lower_bounds, upper_bounds, LPSolver())
+sol = linprog(c, A, sense, b, lower_bounds, upper_bounds, LPSolver(logLevel=OFF))
 
 @test sol.status == :Optimal
 @test sol.objval == -10600
@@ -41,7 +41,7 @@ sense = ['<', '<', '<']
 lower_bounds = -Inf
 upper_bounds = Inf
 
-sol = linprog(c, A, sense, b, lower_bounds, upper_bounds, LPSolver())
+sol = linprog(c, A, sense, b, lower_bounds, upper_bounds, LPSolver(logLevel=OFF))
 
 @test sol.status == :Optimal
 @test_approx_eq(sol.objval, -5.142857142857142)

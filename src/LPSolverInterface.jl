@@ -1,8 +1,11 @@
 module LPSolverInterface
 
+using Logging
+@Logging.configure(level=DEBUG)
+
 importall MathProgBase.SolverInterface
 
-#export LPSolver
+export LPSolver
 immutable LPSolver <: AbstractMathProgSolver
 	options
 end
@@ -49,43 +52,53 @@ type LPMathProgModel <: AbstractLinearQuadraticModel
 		model = new()
 		model.options = options
 		model.maxIter = 20
+		setparams!(model)
 		model
 	end
+	
+	function setparams!(m::LPMathProgModel)
+		for (name,value) in m.options
+			if name == :logLevel
+				Logging.configure(level=value)
+			end
+		end
+	end
 end
+
 LinearQuadraticModel(s::LPSolver) = LPMathProgModel(;s.options...)
 
 function loadproblem!(m::LPMathProgModel, A, collb, colub, obj, rowlb, rowub, sense)
-	println("loadproblem")
-	println("A ", A)
-	println("collb ", collb)
-	println("colub ", colub)
-	println("obj ", obj)
-	println("rowlb ", rowlb)
-	println("rowub ", rowub)
-	println("sense ", sense)
-	println("model ", m)
+	@debug("loadproblem")
+	@debug("A ", A)
+	@debug("collb ", collb)
+	@debug("colub ", colub)
+	@debug("obj ", obj)
+	@debug("rowlb ", rowlb)
+	@debug("rowub ", rowub)
+	@debug("sense ", sense)
+	@debug("model ", m)
 	
 	m.sense = sense
 	
 	prepare!(m, rowlb, rowub)
 	
 	m.A = A
-	println("m.A ", m.A)
+	@debug("m.A ", m.A)
 	
 	checkNegative!(m)
 	
 	m.m, m.n = size(m.A)
-	println("m.m ", m.m)
-	println("m.n ", m.n)
+	@debug("m.m ", m.m)
+	@debug("m.n ", m.n)
 	
 	m.c = obj
-	println("m.c ", m.c)
+	@debug("m.c ", m.c)
 	
 	m.M = ceil(max(norm(m.A), norm(m.b))/100)*100
-	println("m.M ", m.M)
+	@debug("m.M ", m.M)
 	
 	m.basis = zeros(1, m.m)
-	println("m.basis ", m.basis)
+	@debug("m.basis ", m.basis)
 	
 	m.terminate = false
 	m.counter = 0
@@ -93,7 +106,7 @@ function loadproblem!(m::LPMathProgModel, A, collb, colub, obj, rowlb, rowub, se
 	transformToStandardForm!(m)
 	initialize!(m)
 	
-	println("m.b ", m.b)
+	@debug("m.b ", m.b)
 end
 
 function prepare!(m::LPMathProgModel, rowlb, rowub)
@@ -114,14 +127,14 @@ function prepare!(m::LPMathProgModel, rowlb, rowub)
 		end
 	end
 
-	println("m.inq ", m.inq)
+	@debug("m.inq ", m.inq)
 end
 
 function checkNegative!(m::LPMathProgModel)
 	# Check if b is negative
 	
 	b_Neg = [x ? 1 : 0 for x in (m.b .< 0)]
-	println("b_Neg ", b_Neg)
+	@debug("b_Neg ", b_Neg)
 	
 	for (i, x) in enumerate(b_Neg)
 		if x == 1
@@ -136,13 +149,13 @@ function transformToStandardForm!(m::LPMathProgModel)
 	# Add slack variables
 	
 	n_slack = sum(m.inq .< 0) + sum(m.inq .> 0)
-	println("n_slack ", n_slack)
+	@debug("n_slack ", n_slack)
 	
 	m.A = [m.A zeros(m.m, n_slack)]
-	println("m.A ", m.A)
+	@debug("m.A ", m.A)
 	
 	m.c = [m.c; zeros(n_slack, 1)]
-	println("m.c ", m.c)
+	@debug("m.c ", m.c)
 	
 	idx_slack = m.n + 1
 	for i in 1:m.m
@@ -159,7 +172,7 @@ end
 
 function updateDimension!(m::LPMathProgModel)
 	m.n = size(m.A)[2]
-	println("updateDimension m.n ", m.n)
+	@debug("updateDimension m.n ", m.n)
 end
 
 function initialize!(m::LPMathProgModel)
@@ -176,11 +189,11 @@ function initialize!(m::LPMathProgModel)
 			end
 		end
 	end
-	println("m.basis ", m.basis)
+	@debug("m.basis ", m.basis)
 	
 	# Add big M if necessary
 	n_artfVar = m.m - sum(m.basis .> 0)
-	println("n_artfVar ", n_artfVar)
+	@debug("n_artfVar ", n_artfVar)
 	
 	if n_artfVar > 0
 		# Record the index for artificial variables
@@ -201,19 +214,19 @@ function initialize!(m::LPMathProgModel)
 	updateDimension!(m)
 	
 	m.x = zeros(m.n, 1)
-	println("m.x ", m.x)
+	@debug("m.x ", m.x)
 	
 	basis_ids = trunc(Int, m.basis[:])
-	println("basis_ids ", basis_ids)
+	@debug("basis_ids ", basis_ids)
 	
-	println("lhs ", m.A[:,basis_ids])
-	println("rhs ", m.b)
+	@debug("lhs ", m.A[:,basis_ids])
+	@debug("rhs ", m.b)
 	
 	m.x[basis_ids] = m.A[:,basis_ids] \ m.b
-	println("m.x ", m.x)
+	@debug("m.x ", m.x)
 	
 	m.d = m.c - m.A' * m.c[basis_ids]
-	println("m.d ", m.d)
+	@debug("m.d ", m.d)
 	
 	m.z = 0
 end
@@ -229,8 +242,10 @@ end
 function computeDualVars!(m::LPMathProgModel)
 	# BTRAN
 	basis_ids = trunc(Int, m.basis[:])
+	@debug("basis_ids ", basis_ids)
+	
 	m.y = inv(m.A[:,basis_ids])' * m.c[basis_ids]
-	println("m.y ", m.y)
+	@debug("m.y ", m.y)
 end
 
 function priceNonBasicVars!(m::LPMathProgModel)
@@ -239,7 +254,7 @@ function priceNonBasicVars!(m::LPMathProgModel)
 	nonbasis_ids = trunc(Int, m.nonbasis[:])
 	m.d[nonbasis_ids] = m.c[nonbasis_ids] - m.A[:,nonbasis_ids]' * m.y
 	m.d[basis_ids] = 0
-	println("m.d ", m.d)
+	@debug("m.d ", m.d)
 end
 
 function chooseNonBasisVarToEnterBasis!(m::LPMathProgModel)
@@ -257,7 +272,7 @@ function chooseNonBasisVarToEnterBasis!(m::LPMathProgModel)
 	else
 		m.q = findfirst(x -> x == m.dNq, m.d[nonbasis_ids])
 		m.q = Int(m.nonbasis[m.q])
-		println("m.q ", m.q)
+		@debug("m.q ", m.q)
 	end
 end
 
@@ -265,15 +280,15 @@ function findUpdatedCol!(m::LPMathProgModel)
 	# FTRAN
 	basis_ids = trunc(Int, m.basis[:])
 	m.updCol = m.A[:,basis_ids] \ m.A[:,m.q]
-	println("m.updCol ", m.updCol)
+	@debug("m.updCol ", m.updCol)
 end
 
 function findBasisVarToLeaveBasis!(m::LPMathProgModel)
 	# CHUZR
 	basis_ids = trunc(Int, m.basis[:])
 	m.sigma, indx = findmin(m.x[basis_ids] ./ m.updCol)
-	println("m.sigma ", m.sigma)
-	println("indx ", indx)
+	@debug("m.sigma ", m.sigma)
+	@debug("indx ", indx)
 	
 	if isinf(m.sigma)
 		m.terminate = true
@@ -281,7 +296,7 @@ function findBasisVarToLeaveBasis!(m::LPMathProgModel)
 	end
 	
 	m.t = m.basis[indx]
-	println("m.t ", m.t)
+	@debug("m.t ", m.t)
 end
 
 function updateStep!(m::LPMathProgModel)
@@ -295,35 +310,35 @@ function updateStep!(m::LPMathProgModel)
 	m.x[nonbasis_ids] = m.x[nonbasis_ids] + m.sigma * e[nonbasis_ids]
 	
 	m.z = m.z + m.dNq * m.sigma
-	println("m.z ", m.z)
+	@debug("m.z ", m.z)
 end
 
 function updateBasis!(m::LPMathProgModel)
 	m.basis[find(x -> x == m.t, m.basis)] = m.q
-	println("m.basis ", m.basis)
+	@debug("m.basis ", m.basis)
 	m.nonbasis[find(x -> x == m.q, m.nonbasis)] = m.t
-	println("m.nonbasis ", m.nonbasis)
+	@debug("m.nonbasis ", m.nonbasis)
 end
 
 function optimize!(m::LPMathProgModel)
-	println("optimize ")
+	@debug("optimize ")
 	
 	while !m.terminate
 		incrementCounter!(m)
-		computeDualVars!(m)
-		priceNonBasicVars!(m)
-		chooseNonBasisVarToEnterBasis!(m)
-		findUpdatedCol!(m)
-		findBasisVarToLeaveBasis!(m)
+		computeDualVars!(m)	# BTRAN
+		priceNonBasicVars!(m)	# PRICE
+		chooseNonBasisVarToEnterBasis!(m)	# CHUZC
+		findUpdatedCol!(m)	# FTRAN
+		findBasisVarToLeaveBasis!(m)	# CHUZR
 		updateStep!(m)
 		updateBasis!(m)
 	end
 end
 
 function status(m::LPMathProgModel)
-	println("status ", m.status)
-	println("m.x ", m.x)
-	println("m.fval ", m.fval)
+	@debug("status ", m.status)
+	@debug("m.x ", m.x)
+	@debug("m.fval ", m.fval)
 	m.status
 end
 
