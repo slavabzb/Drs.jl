@@ -1,4 +1,5 @@
 using MathProgBase
+using Logging
 using LPLib
 
 A = Float64[1 0; 0 2; 3 2]
