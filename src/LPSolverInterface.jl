@@ -97,7 +97,7 @@ function loadproblem!(m::LPMathProgModel, A, collb, colub, obj, rowlb, rowub, se
 	m.M = ceil(max(norm(m.A), norm(m.b))/100)*100
 	@debug("m.M ", m.M)
 	
-	m.basis = zeros(Int, 1, m.m)
+	m.basis = zeros(Int, m.m)
 	@debug("m.basis ", m.basis)
 	
 	m.terminate = false
@@ -216,13 +216,13 @@ function initialize!(m::LPMathProgModel)
 	m.x = zeros(m.n, 1)
 	@debug("m.x ", m.x)
 	
-	@debug("lhs ", m.A[:,m.basis[:]])
+	@debug("lhs ", m.A[:,m.basis])
 	@debug("rhs ", m.b)
 	
-	m.x[m.basis[:]] = m.A[:,m.basis[:]] \ m.b
+	m.x[m.basis] = m.A[:,m.basis] \ m.b
 	@debug("m.x ", m.x)
 	
-	m.d = m.c - m.A' * m.c[m.basis[:]]
+	m.d = m.c - m.A' * m.c[m.basis]
 	@debug("m.d ", m.d)
 	
 	m.z = 0
@@ -238,14 +238,14 @@ end
 
 function computeDualVars!(m::LPMathProgModel)
 	# BTRAN
-	m.y = inv(m.A[:,m.basis[:]])' * m.c[m.basis[:]]
+	m.y = inv(m.A[:,m.basis])' * m.c[m.basis]
 	@debug("m.y ", m.y)
 end
 
 function priceNonBasicVars!(m::LPMathProgModel)
 	# PRICE
 	m.d[m.nonbasis[:]] = m.c[m.nonbasis[:]] - m.A[:,m.nonbasis[:]]' * m.y
-	m.d[m.basis[:]] = 0
+	m.d[m.basis] = 0
 	@debug("m.d ", m.d)
 end
 
@@ -269,13 +269,13 @@ end
 
 function findUpdatedCol!(m::LPMathProgModel)
 	# FTRAN
-	m.updCol = m.A[:,m.basis[:]] \ m.A[:,m.q]
+	m.updCol = m.A[:,m.basis] \ m.A[:,m.q]
 	@debug("m.updCol ", m.updCol)
 end
 
 function findBasisVarToLeaveBasis!(m::LPMathProgModel)
 	# CHUZR
-	m.sigma, indx = findmin(m.x[m.basis[:]] ./ m.updCol)
+	m.sigma, indx = findmin(m.x[m.basis] ./ m.updCol)
 	@debug("m.sigma ", m.sigma)
 	@debug("indx ", indx)
 	
@@ -292,7 +292,7 @@ function updateStep!(m::LPMathProgModel)
 	e = zeros(m.n, 1)
 	e[m.q] = 1
 	
-	m.x[m.basis[:]] = m.x[m.basis[:]] - m.sigma * m.updCol
+	m.x[m.basis] = m.x[m.basis] - m.sigma * m.updCol
 	m.x[m.nonbasis[:]] = m.x[m.nonbasis[:]] + m.sigma * e[m.nonbasis[:]]
 	
 	m.z = m.z + m.dNq * m.sigma
