@@ -244,14 +244,14 @@ end
 
 function priceNonBasicVars!(m::LPMathProgModel)
 	# PRICE
-	m.d[m.nonbasis[:]] = m.c[m.nonbasis[:]] - m.A[:,m.nonbasis[:]]' * m.y
+	m.d[m.nonbasis] = m.c[m.nonbasis] - m.A[:,m.nonbasis]' * m.y
 	m.d[m.basis] = 0
 	@debug("m.d ", m.d)
 end
 
 function chooseNonBasisVarToEnterBasis!(m::LPMathProgModel)
 	# CHUZC
-	m.dNq = minimum(m.d[m.nonbasis[:]])
+	m.dNq = minimum(m.d[m.nonbasis])
 	if m.dNq >= 0
 		m.terminate = true
 		m.status = :Optimal
@@ -261,7 +261,7 @@ function chooseNonBasisVarToEnterBasis!(m::LPMathProgModel)
 			m.fval = m.z
 		end
 	else
-		m.q = findfirst(x -> x == m.dNq, m.d[m.nonbasis[:]])
+		m.q = findfirst(x -> x == m.dNq, m.d[m.nonbasis])
 		m.q = m.nonbasis[m.q]
 		@debug("m.q ", m.q)
 	end
@@ -293,7 +293,7 @@ function updateStep!(m::LPMathProgModel)
 	e[m.q] = 1
 	
 	m.x[m.basis] = m.x[m.basis] - m.sigma * m.updCol
-	m.x[m.nonbasis[:]] = m.x[m.nonbasis[:]] + m.sigma * e[m.nonbasis[:]]
+	m.x[m.nonbasis] = m.x[m.nonbasis] + m.sigma * e[m.nonbasis]
 	
 	m.z = m.z + m.dNq * m.sigma
 	@debug("m.z ", m.z)
