@@ -97,7 +97,7 @@ function loadproblem!(m::LPMathProgModel, A, collb, colub, obj, rowlb, rowub, se
 	m.M = ceil(max(norm(m.A), norm(m.b))/100)*100
 	@debug("m.M ", m.M)
 	
-	m.basis = zeros(1, m.m)
+	m.basis = zeros(Int, 1, m.m)
 	@debug("m.basis ", m.basis)
 	
 	m.terminate = false
@@ -216,16 +216,13 @@ function initialize!(m::LPMathProgModel)
 	m.x = zeros(m.n, 1)
 	@debug("m.x ", m.x)
 	
-	basis_ids = trunc(Int, m.basis[:])
-	@debug("basis_ids ", basis_ids)
-	
-	@debug("lhs ", m.A[:,basis_ids])
+	@debug("lhs ", m.A[:,m.basis[:]])
 	@debug("rhs ", m.b)
 	
-	m.x[basis_ids] = m.A[:,basis_ids] \ m.b
+	m.x[m.basis[:]] = m.A[:,m.basis[:]] \ m.b
 	@debug("m.x ", m.x)
 	
-	m.d = m.c - m.A' * m.c[basis_ids]
+	m.d = m.c - m.A' * m.c[m.basis[:]]
 	@debug("m.d ", m.d)
 	
 	m.z = 0
@@ -241,26 +238,20 @@ end
 
 function computeDualVars!(m::LPMathProgModel)
 	# BTRAN
-	basis_ids = trunc(Int, m.basis[:])
-	@debug("basis_ids ", basis_ids)
-	
-	m.y = inv(m.A[:,basis_ids])' * m.c[basis_ids]
+	m.y = inv(m.A[:,m.basis[:]])' * m.c[m.basis[:]]
 	@debug("m.y ", m.y)
 end
 
 function priceNonBasicVars!(m::LPMathProgModel)
 	# PRICE
-	basis_ids = trunc(Int, m.basis[:])
-	nonbasis_ids = trunc(Int, m.nonbasis[:])
-	m.d[nonbasis_ids] = m.c[nonbasis_ids] - m.A[:,nonbasis_ids]' * m.y
-	m.d[basis_ids] = 0
+	m.d[m.nonbasis[:]] = m.c[m.nonbasis[:]] - m.A[:,m.nonbasis[:]]' * m.y
+	m.d[m.basis[:]] = 0
 	@debug("m.d ", m.d)
 end
 
 function chooseNonBasisVarToEnterBasis!(m::LPMathProgModel)
 	# CHUZC
-	nonbasis_ids = trunc(Int, m.nonbasis[:])
-	m.dNq = minimum(m.d[nonbasis_ids])
+	m.dNq = minimum(m.d[m.nonbasis[:]])
 	if m.dNq >= 0
 		m.terminate = true
 		m.status = :Optimal
@@ -270,23 +261,21 @@ function chooseNonBasisVarToEnterBasis!(m::LPMathProgModel)
 			m.fval = m.z
 		end
 	else
-		m.q = findfirst(x -> x == m.dNq, m.d[nonbasis_ids])
-		m.q = Int(m.nonbasis[m.q])
+		m.q = findfirst(x -> x == m.dNq, m.d[m.nonbasis[:]])
+		m.q = m.nonbasis[m.q]
 		@debug("m.q ", m.q)
 	end
 end
 
 function findUpdatedCol!(m::LPMathProgModel)
 	# FTRAN
-	basis_ids = trunc(Int, m.basis[:])
-	m.updCol = m.A[:,basis_ids] \ m.A[:,m.q]
+	m.updCol = m.A[:,m.basis[:]] \ m.A[:,m.q]
 	@debug("m.updCol ", m.updCol)
 end
 
 function findBasisVarToLeaveBasis!(m::LPMathProgModel)
 	# CHUZR
-	basis_ids = trunc(Int, m.basis[:])
-	m.sigma, indx = findmin(m.x[basis_ids] ./ m.updCol)
+	m.sigma, indx = findmin(m.x[m.basis[:]] ./ m.updCol)
 	@debug("m.sigma ", m.sigma)
 	@debug("indx ", indx)
 	
@@ -303,11 +292,8 @@ function updateStep!(m::LPMathProgModel)
 	e = zeros(m.n, 1)
 	e[m.q] = 1
 	
-	basis_ids = trunc(Int, m.basis[:])
-	nonbasis_ids = trunc(Int, m.nonbasis[:])
-	
-	m.x[basis_ids] = m.x[basis_ids] - m.sigma * m.updCol
-	m.x[nonbasis_ids] = m.x[nonbasis_ids] + m.sigma * e[nonbasis_ids]
+	m.x[m.basis[:]] = m.x[m.basis[:]] - m.sigma * m.updCol
+	m.x[m.nonbasis[:]] = m.x[m.nonbasis[:]] + m.sigma * e[m.nonbasis[:]]
 	
 	m.z = m.z + m.dNq * m.sigma
 	@debug("m.z ", m.z)
