@@ -1,6 +1,9 @@
+#!/usr/bin/env julia
+
+using Base.Test
 using MathProgBase
 using Logging
-using LPLib
+using Drs
 
 logLevel=OFF
 
@@ -12,7 +15,7 @@ sense = ['<', '<', '<']
 lower_bounds = -Inf
 upper_bounds = Inf
 
-sol = linprog(c, A, sense, b, lower_bounds, upper_bounds, LPSolver(logLevel=logLevel))
+sol = linprog(c, A, sense, b, lower_bounds, upper_bounds, DrsSolver(logLevel=logLevel))
 
 @test sol.status == :Optimal
 @test sol.objval == -525
@@ -28,7 +31,7 @@ sense = ['<', '<', '<', '<']
 lower_bounds = -Inf
 upper_bounds = Inf
 
-sol = linprog(c, A, sense, b, lower_bounds, upper_bounds, LPSolver(logLevel=logLevel))
+sol = linprog(c, A, sense, b, lower_bounds, upper_bounds, DrsSolver(logLevel=logLevel))
 
 @test sol.status == :Optimal
 @test sol.objval == -10600
@@ -44,7 +47,7 @@ sense = ['<', '<', '<']
 lower_bounds = -Inf
 upper_bounds = Inf
 
-sol = linprog(c, A, sense, b, lower_bounds, upper_bounds, LPSolver(logLevel=logLevel))
+sol = linprog(c, A, sense, b, lower_bounds, upper_bounds, DrsSolver(logLevel=logLevel))
 
 @test sol.status == :Optimal
 @test_approx_eq(sol.objval, -5.142857142857142)

@@ -1,17 +1,20 @@
-module LPSolverInterface
+module DrsSolverInterface
+
+include("DrsCore.jl")
+using .DrsCore
 
 using Logging
 @Logging.configure(level=DEBUG)
 
 importall MathProgBase.SolverInterface
 
-export LPSolver
-immutable LPSolver <: AbstractMathProgSolver
+export DrsSolver
+immutable DrsSolver <: AbstractMathProgSolver
 	options
 end
-LPSolver(;kwargs...) = LPSolver(kwargs)
+DrsSolver(;kwargs...) = DrsSolver(kwargs)
 
-type LPMathProgModel <: AbstractLinearQuadraticModel
+type DrsMathProgModel <: AbstractLinearQuadraticModel
 	options
 	
 	# Problem data
@@ -48,7 +51,7 @@ type LPMathProgModel <: AbstractLinearQuadraticModel
 	
 	maxIter		# Max number of iterations
 	
-	function LPMathProgModel(;options...)
+	function DrsMathProgModel(;options...)
 		model = new()
 		model.options = options
 		model.maxIter = 20
@@ -56,7 +59,7 @@ type LPMathProgModel <: AbstractLinearQuadraticModel
 		model
 	end
 	
-	function setparams!(m::LPMathProgModel)
+	function setparams!(m::DrsMathProgModel)
 		for (name,value) in m.options
 			if name == :logLevel
 				Logging.configure(level=value)
@@ -65,9 +68,9 @@ type LPMathProgModel <: AbstractLinearQuadraticModel
 	end
 end
 
-LinearQuadraticModel(s::LPSolver) = LPMathProgModel(;s.options...)
+LinearQuadraticModel(s::DrsSolver) = DrsMathProgModel(;s.options...)
 
-function loadproblem!(m::LPMathProgModel, A, collb, colub, obj, rowlb, rowub, sense)
+function loadproblem!(m::DrsMathProgModel, A, collb, colub, obj, rowlb, rowub, sense)
 	@debug("loadproblem")
 	@debug("A ", A)
 	@debug("collb ", collb)
@@ -109,7 +112,7 @@ function loadproblem!(m::LPMathProgModel, A, collb, colub, obj, rowlb, rowub, se
 	@debug("m.b ", m.b)
 end
 
-function prepare!(m::LPMathProgModel, rowlb, rowub)
+function prepare!(m::DrsMathProgModel, rowlb, rowub)
 	# Merge lower_bounds and upper_bounds to single b
 	# Set inq array
 	
@@ -130,7 +133,7 @@ function prepare!(m::LPMathProgModel, rowlb, rowub)
 	@debug("m.inq ", m.inq)
 end
 
-function checkNegative!(m::LPMathProgModel)
+function checkNegative!(m::DrsMathProgModel)
 	# Check if b is negative
 	
 	b_Neg = [x ? 1 : 0 for x in (m.b .< 0)]
@@ -145,7 +148,7 @@ function checkNegative!(m::LPMathProgModel)
 	end
 end
 
-function transformToStandardForm!(m::LPMathProgModel)
+function transformToStandardForm!(m::DrsMathProgModel)
 	# Add slack variables
 	
 	n_slack = sum(m.inq .< 0) + sum(m.inq .> 0)
@@ -170,12 +173,12 @@ function transformToStandardForm!(m::LPMathProgModel)
 	updateDimension!(m)
 end
 
-function updateDimension!(m::LPMathProgModel)
+function updateDimension!(m::DrsMathProgModel)
 	m.n = size(m.A)[2]
 	@debug("updateDimension m.n ", m.n)
 end
 
-function initialize!(m::LPMathProgModel)
+function initialize!(m::DrsMathProgModel)
 	# Find potential basis
 	for i in 1:m.n
 		column = m.A[:,i]
@@ -228,7 +231,7 @@ function initialize!(m::LPMathProgModel)
 	m.z = 0
 end
 
-function incrementCounter!(m::LPMathProgModel)
+function incrementCounter!(m::DrsMathProgModel)
 	m.counter += 1
 	if m.counter == m.maxIter
 		m.terminate = true
@@ -236,20 +239,20 @@ function incrementCounter!(m::LPMathProgModel)
 	end
 end
 
-function computeDualVars!(m::LPMathProgModel)
+function computeDualVars!(m::DrsMathProgModel)
 	# BTRAN
 	m.y = inv(m.A[:,m.basis])' * m.c[m.basis]
 	@debug("m.y ", m.y)
 end
 
-function priceNonBasicVars!(m::LPMathProgModel)
+function priceNonBasicVars!(m::DrsMathProgModel)
 	# PRICE
 	m.d[m.nonbasis] = m.c[m.nonbasis] - m.A[:,m.nonbasis]' * m.y
 	m.d[m.basis] = 0
 	@debug("m.d ", m.d)
 end
 
-function chooseNonBasisVarToEnterBasis!(m::LPMathProgModel)
+function chooseNonBasisVarToEnterBasis!(m::DrsMathProgModel)
 	# CHUZC
 	m.dNq = minimum(m.d[m.nonbasis])
 	if m.dNq >= 0
@@ -267,13 +270,13 @@ function chooseNonBasisVarToEnterBasis!(m::LPMathProgModel)
 	end
 end
 
-function findUpdatedCol!(m::LPMathProgModel)
+function findUpdatedCol!(m::DrsMathProgModel)
 	# FTRAN
 	m.updCol = m.A[:,m.basis] \ m.A[:,m.q]
 	@debug("m.updCol ", m.updCol)
 end
 
-function findBasisVarToLeaveBasis!(m::LPMathProgModel)
+function findBasisVarToLeaveBasis!(m::DrsMathProgModel)
 	# CHUZR
 	m.sigma, indx = findmin(m.x[m.basis] ./ m.updCol)
 	@debug("m.sigma ", m.sigma)
@@ -288,7 +291,7 @@ function findBasisVarToLeaveBasis!(m::LPMathProgModel)
 	@debug("m.t ", m.t)
 end
 
-function updateStep!(m::LPMathProgModel)
+function updateStep!(m::DrsMathProgModel)
 	e = zeros(m.n, 1)
 	e[m.q] = 1
 	
@@ -299,14 +302,14 @@ function updateStep!(m::LPMathProgModel)
 	@debug("m.z ", m.z)
 end
 
-function updateBasis!(m::LPMathProgModel)
+function updateBasis!(m::DrsMathProgModel)
 	m.basis[find(x -> x == m.t, m.basis)] = m.q
 	@debug("m.basis ", m.basis)
 	m.nonbasis[find(x -> x == m.q, m.nonbasis)] = m.t
 	@debug("m.nonbasis ", m.nonbasis)
 end
 
-function optimize!(m::LPMathProgModel)
+function optimize!(m::DrsMathProgModel)
 	@debug("optimize ")
 	
 	while !m.terminate
@@ -321,24 +324,24 @@ function optimize!(m::LPMathProgModel)
 	end
 end
 
-function status(m::LPMathProgModel)
+function status(m::DrsMathProgModel)
 	@debug("status ", m.status)
 	@debug("m.x ", m.x)
 	@debug("m.fval ", m.fval)
 	m.status
 end
 
-function getreducedcosts(m::LPMathProgModel)
+function getreducedcosts(m::DrsMathProgModel)
 end
 
-function getconstrduals(m::LPMathProgModel)
+function getconstrduals(m::DrsMathProgModel)
 end
 
-function getobjval(m::LPMathProgModel)
+function getobjval(m::DrsMathProgModel)
 	m.fval
 end
 
-function getsolution(m::LPMathProgModel)
+function getsolution(m::DrsMathProgModel)
 	m.x'
 end
 

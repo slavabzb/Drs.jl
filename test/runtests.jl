@@ -1,11 +1,9 @@
 #!/usr/bin/env julia
 
-using Base.Test
-
 DIR = dirname(@__FILE__())
 
 for test in readdir(DIR)
-	if ismatch(r"^(?(?=runtests)$|.+\.jl$)", test)
+	if ismatch(r"^test_.+\.jl", test)
 		include("$(test)")
 	end
 end
