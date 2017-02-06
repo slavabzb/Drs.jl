@@ -1,11 +1,12 @@
 module DrsCore
 
-export
-	foo
+using Logging
+@Logging.configure(level=DEBUG)
 
-function foo()
-	println("foo")
+export CHUZR
+
+function CHUZR()
+	@debug("CHUZR")
 end
 
 end
-

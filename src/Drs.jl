@@ -2,9 +2,9 @@ __precompile__()
 
 module Drs
 
-include("DrsSolverInterface.jl")
+include("DrsMathProgSolverInterface.jl")
 
-using .DrsSolverInterface
-export DrsSolver
+using .DrsMathProgSolverInterface
+export DrsMathProgSolver
 
 end
