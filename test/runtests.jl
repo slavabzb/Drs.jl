@@ -1,9 +1,9 @@
 #!/usr/bin/env julia
 
-DIR = dirname(@__FILE__())
+tests = [
+	"transform_to_standard_form"
+]
 
-for test in readdir(DIR)
-	if ismatch(r"^test_.+\.jl", test)
-		include("$(test)")
-	end
+for t in tests
+	include("$(t).jl")
 end
