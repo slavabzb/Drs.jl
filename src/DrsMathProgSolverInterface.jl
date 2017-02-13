@@ -24,6 +24,8 @@ type DrsMathProgModel <: AbstractLinearQuadraticModel
 	A
 	b
 	c
+	basis
+	nonbasis
 end
 LinearQuadraticModel(s::DrsMathProgSolver) = DrsMathProgModel(; s.options...)
 
@@ -42,7 +44,7 @@ function setparameters!(m::Union{DrsMathProgSolver, DrsMathProgModel}; kwargs...
 end
 
 function DrsMathProgModel(; kwargs...)
-	m = DrsMathProgModel(0, 0, 0)
+	m = DrsMathProgModel(0, 0, 0, 0, 0)
 	setparameters!(m; kwargs...)
 	m
 end
@@ -52,7 +54,28 @@ function loadproblem!(m::DrsMathProgModel, A, l, u, c, lb, ub, sense)
 	m.A = A
 	m.b = zeros(size(ub))
 	m.c = c
+
 	DrsTransformToStandardForm!(m, lb, ub, sense)
+
+	r, c = size(m.A)
+	m.basis = zeros(Int, r)
+
+	DrsFindPotentialBasis!(m)
+end
+
+function DrsFindPotentialBasis!(m::DrsMathProgModel)
+	r, c = size(m.A)
+	for ic in 1:c
+		column = m.A[:,ic]
+		if countnz(column) == 1
+			ir = findfirst(x -> x == 1, column)
+			if ir != 0 && m.basis[ir] == 0
+				# add the column if current row has not been selected
+				m.basis[ir] = ic
+			end
+		end
+	end
+	m.nonbasis = setdiff(1:c, m.basis)
 end
 
 function DrsTransformToStandardForm!(m::DrsMathProgModel, lb, ub, sense)
