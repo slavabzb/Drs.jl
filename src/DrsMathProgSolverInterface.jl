@@ -79,8 +79,35 @@ function DrsFindPotentialBasis!(m::DrsMathProgModel)
 end
 
 function DrsTransformToStandardForm!(m::DrsMathProgModel, lb, ub, sense)
+	@assert length(lb) == length(ub) "the lengths of lower bounds ($(length(lb))) and upper bounds ($(length(ub))) are different"
+
 	r, c = size(m.A)
 
+	# check if b is negative
+
+	for i in 1:length(lb)
+		if lb[i] == typemin(typeof(lb[i]))
+			# <
+			if ub[i] < 0
+				m.A[i,:] = -m.A[i,:]
+				lb[i], ub[i] = -ub[i], -lb[i]
+			end
+		elseif ub[i] == typemax(typeof(ub[i]))
+			# >
+			if lb[i] < 0
+				m.A[i,:] = -m.A[i,:]
+				lb[i], ub[i] = -ub[i], -lb[i]
+			end
+		else
+			# =
+			if lb[i] < 0
+				m.A[i,:] = -m.A[i,:]
+				lb[i], ub[i] = -ub[i], -lb[i]
+			end
+		end
+	end
+
+	# add variables
 	surplus_i = 0
 
 	for i in 1:length(lb)
@@ -122,8 +149,32 @@ function DrsTransformToStandardForm!(m::DrsMathProgModel, lb, ub, sense)
 	end
 end
 
+function DrsChuzr(m::DrsMathProgModel)
+	# find basis variable to leave the basis
+	@debug("A $(m.A)")
+	@debug("c $(m.c)")
+	@debug("basis $(m.basis)")
+	B = m.A[:,m.basis]
+	@debug("B $B")
+	invB = inv(B)
+	r, c = size(invB)
+	@debug("invB $invB")
+	b̂ = invB * m.b
+	@debug("b̂ $b̂")
+	e = eye(r)
+	for i in 1:r
+		s = invB * e[:,i]
+		@debug("s[$i] $s, b[$i] $(b̂[i]), b/s $(b̂[i]/s[i])")
+	end
+	t = invB * e
+	y = b̂ ./ t
+	@debug("y $y")
+	x = m.A[:,m.basis] \ m.b
+	@debug("x $x")
+end
+
 function optimize!(m::DrsMathProgModel)
-	@debug("optimize!")
+	DrsChuzr(m)
 end
 
 function status(m::DrsMathProgModel)

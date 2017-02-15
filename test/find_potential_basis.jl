@@ -7,9 +7,9 @@ A = [2 3 1 0 0 0; -3 2 0 1 0 0; 0 2 0 0 1 0; 2 1 0 0 0 1]
 b = nothing
 c = nothing
 
-r, c = size(A)
+row, col = size(A)
 
-basis = zeros(Int, r)
+basis = zeros(Int, row)
 nonbasis = nothing
 
 m = DrsMathProgModel(A, b, c, basis, nonbasis)
