@@ -4,15 +4,10 @@ using Base.Test
 using Drs.DrsMathProgSolverInterface
 
 A = [2 3 1 0 0 0; -3 2 0 1 0 0; 0 2 0 0 1 0; 2 1 0 0 0 1]
-b = nothing
-c = nothing
 
 row, col = size(A)
 
-basis = zeros(Int, row)
-nonbasis = nothing
-
-m = DrsMathProgModel(A, b, c, basis, nonbasis)
+m = DrsMathProgModel(A, nothing, nothing, zeros(Int, row), nothing, nothing, nothing, nothing)
 Drs.DrsMathProgSolverInterface.DrsFindPotentialBasis!(m)
 
 @test m.basis == [3, 4, 5, 6]

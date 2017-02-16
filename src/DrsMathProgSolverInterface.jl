@@ -21,11 +21,14 @@ end
 DrsMathProgSolver(; kwargs...) = DrsMathProgSolver(kwargs)
 
 type DrsMathProgModel <: AbstractLinearQuadraticModel
-	A
-	b
-	c
-	basis
-	nonbasis
+	A						# constraint coefficients
+	b						# RHS
+	c						# objective coefficients
+	basis				# basis variables
+	nonbasis		# nonbasis variables
+	B⁻¹					# A[:,basis]⁻¹
+	b̂					 # B⁻¹ ⋅ b
+	P						# a set of rows of matrix A of good candidates to leave the basis
 end
 LinearQuadraticModel(s::DrsMathProgSolver) = DrsMathProgModel(; s.options...)
 
@@ -44,7 +47,7 @@ function setparameters!(m::Union{DrsMathProgSolver, DrsMathProgModel}; kwargs...
 end
 
 function DrsMathProgModel(; kwargs...)
-	m = DrsMathProgModel(0, 0, 0, 0, 0)
+	m = DrsMathProgModel(0, 0, 0, 0, 0, 0, 0, 0)
 	setparameters!(m; kwargs...)
 	m
 end
@@ -149,32 +152,37 @@ function DrsTransformToStandardForm!(m::DrsMathProgModel, lb, ub, sense)
 	end
 end
 
-function DrsChuzr(m::DrsMathProgModel)
+function DrsChuzr!(m::DrsMathProgModel)
 	# find basis variable to leave the basis
 	@debug("A $(m.A)")
+	@debug("b $(m.b)")
 	@debug("c $(m.c)")
 	@debug("basis $(m.basis)")
+
 	B = m.A[:,m.basis]
 	@debug("B $B")
-	invB = inv(B)
-	r, c = size(invB)
-	@debug("invB $invB")
-	b̂ = invB * m.b
-	@debug("b̂ $b̂")
+
+	m.B⁻¹ = inv(B)
+	@debug("B⁻¹ $(m.B⁻¹)")
+
+	m.b̂ = m.B⁻¹ * m.b
+	@debug("b̂ $(m.b̂)")
+
+	r, c = size(m.B⁻¹)
 	e = eye(r)
-	for i in 1:r
-		s = invB * e[:,i]
-		@debug("s[$i] $s, b[$i] $(b̂[i]), b/s $(b̂[i]/s[i])")
-	end
-	t = invB * e
-	y = b̂ ./ t
-	@debug("y $y")
-	x = m.A[:,m.basis] \ m.b
-	@debug("x $x")
+
+	rations = [m.b̂[i] / (m.B⁻¹ * e[:,i])[i] for i in 1:r]
+	@debug("rations $rations")
+
+	results = collect(take(sort(rations), nprocs()))
+	@debug("results $results")
+
+	m.P = findin(results, rations)
+	@debug("P $(m.P)")
 end
 
 function optimize!(m::DrsMathProgModel)
-	DrsChuzr(m)
+	DrsChuzr!(m)
 end
 
 function status(m::DrsMathProgModel)
