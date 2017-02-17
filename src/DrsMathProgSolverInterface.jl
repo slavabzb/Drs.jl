@@ -111,7 +111,7 @@ function DrsTransformToStandardForm!(m::DrsMathProgModel, lb, ub, sense)
 	end
 
 	# add variables
-	surplus_i = 0
+	surplus = []
 
 	for i in 1:length(lb)
 		if lb[i] == typemin(typeof(lb[i]))
@@ -126,7 +126,7 @@ function DrsTransformToStandardForm!(m::DrsMathProgModel, lb, ub, sense)
 			m.A[i, end] = -1
 			m.b[i] = lb[i]
 			m.c = [m.c; 0]
-			surplus_i = i
+			push!(surplus, i)
 		end
 	end
 
@@ -141,9 +141,9 @@ function DrsTransformToStandardForm!(m::DrsMathProgModel, lb, ub, sense)
 	end
 
 	# add artificial for surplus
-	if surplus_i > 0
+	for i in surplus
 		m.A = [m.A zeros(r, 1)]
-		m.A[surplus_i, end] = 1
+		m.A[i, end] = 1
 		m.c = [m.c; 0]
 	end
 
