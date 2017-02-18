@@ -174,15 +174,22 @@ function DrsChuzr!(m::DrsMathProgModel)
 	rations = [m.b̂[i] / (m.B⁻¹ * e[:,i])[i] for i in 1:r]
 	@debug("rations $rations")
 
-	results = collect(take(sort(rations), nprocs()))
-	@debug("results $results")
-
-	m.P = findin(results, rations)
+	m.P = collect(take(sortperm(rations), nprocs()))
 	@debug("P $(m.P)")
+end
+
+function DrsBtran!(m::DrsMathProgModel)
+	println("DrsBtran! pid $(myid())")
 end
 
 function optimize!(m::DrsMathProgModel)
 	DrsChuzr!(m)
+
+	@sync begin
+		for p in procs()
+			@async remotecall_wait(DrsBtran!, p, m)
+		end
+	end
 end
 
 function status(m::DrsMathProgModel)
