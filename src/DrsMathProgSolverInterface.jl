@@ -173,6 +173,7 @@ function optimize!(m::DrsMathProgModel)
 	basic_vars = invB * m.b
 	@debug("basic_vars $basic_vars")
 
+	# find good candidates to leave the basis
 	P = CHUZR(invB, basic_vars)
 	@debug("P $P")
 
