@@ -1,5 +1,8 @@
 module DrsMathProgSolverInterface
 
+include("Simplex.jl")
+using .Simplex
+
 using Logging
 @Logging.configure(level=DEBUG)
 
@@ -26,9 +29,6 @@ type DrsMathProgModel <: AbstractLinearQuadraticModel
 	c						# objective coefficients
 	basis				# basis variables
 	nonbasis		# nonbasis variables
-	B⁻¹					# A[:,basis]⁻¹
-	b̂					 # B⁻¹ ⋅ b
-	P						# a set of rows of matrix A of good candidates to leave the basis
 end
 LinearQuadraticModel(s::DrsMathProgSolver) = DrsMathProgModel(; s.options...)
 
@@ -47,7 +47,7 @@ function setparameters!(m::Union{DrsMathProgSolver, DrsMathProgModel}; kwargs...
 end
 
 function DrsMathProgModel(; kwargs...)
-	m = DrsMathProgModel(0, 0, 0, 0, 0, 0, 0, 0)
+	m = DrsMathProgModel(0, 0, 0, 0, 0)
 	setparameters!(m; kwargs...)
 	m
 end
@@ -152,49 +152,47 @@ function DrsTransformToStandardForm!(m::DrsMathProgModel, lb, ub, sense)
 	end
 end
 
-function DrsChuzr!(m::DrsMathProgModel)
-	# find basis variable to leave the basis
+function optimize!(m::DrsMathProgModel)
 	@debug("A $(m.A)")
 	@debug("b $(m.b)")
 	@debug("c $(m.c)")
 	@debug("basis $(m.basis)")
+	@debug("nonbasis $(m.nonbasis)")
 
 	B = m.A[:,m.basis]
 	@debug("B $B")
 
-	m.B⁻¹ = inv(B)
-	@debug("B⁻¹ $(m.B⁻¹)")
+	N = m.A[:,m.nonbasis]
+	@debug("N $N")
 
-	m.b̂ = m.B⁻¹ * m.b
-	@debug("b̂ $(m.b̂)")
+	invB = SharedArray(typeof(B[1]), size(B),
+		init = S -> S[linearindices(B)] = inv(B)[linearindices(B)])
 
-	r, c = size(m.B⁻¹)
-	e = eye(r)
+	@debug("invB $invB")
 
-	rations = [m.b̂[i] / (m.B⁻¹ * e[:,i])[i] for i in 1:r]
-	@debug("rations $rations")
+	basic_vars = invB * m.b
+	@debug("basic_vars $basic_vars")
 
-	m.P = collect(take(sortperm(rations), nprocs()))
-	@debug("P $(m.P)")
-end
+	P = CHUZR(invB, basic_vars)
+	@debug("P $P")
 
-function DrsBtran!(m::DrsMathProgModel)
-	println("DrsBtran! pid $(myid())")
-end
-
-function optimize!(m::DrsMathProgModel)
-	DrsChuzr!(m)
+	pivotal_row = zeros(length(P))
 
 	@sync begin
-		for p in procs()
-			@async remotecall_wait(DrsBtran!, p, m)
+		for p in P
+			pi = @spawn BTRAN(invB, p)
+			pivotal_row = @spawn PRICE(N, fetch(pi))
+			t = fetch(pivotal_row)
+			@debug("t $t")
+			# pivotal_row[p]
 		end
 	end
+
+	@debug("pivotal_row $pivotal_row")
 end
 
 function status(m::DrsMathProgModel)
 	@debug("status")
-	:Optimal
 end
 
 function getreducedcosts(m::DrsMathProgModel)
@@ -207,12 +205,10 @@ end
 
 function getobjval(m::DrsMathProgModel)
 	@debug("getobjval")
-	-0.75
 end
 
 function getsolution(m::DrsMathProgModel)
 	@debug("getsolution")
-	[0.75,0.0]
 end
 
 end
