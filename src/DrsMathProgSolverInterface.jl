@@ -165,31 +165,76 @@ function optimize!(m::DrsMathProgModel)
 	N = m.A[:,m.nonbasis]
 	@debug("N $N")
 
-	invB = SharedArray(typeof(B[1]), size(B),
-		init = S -> S[linearindices(B)] = inv(B)[linearindices(B)])
-
+	invB = inv(B)
 	@debug("invB $invB")
 
 	basic_vars = invB * m.b
 	@debug("basic_vars $basic_vars")
 
-	# find good candidates to leave the basis
-	P = CHUZR(invB, basic_vars)
-	@debug("P $P")
+	terminate = false
+	while !terminate
+		P = CHUZR(invB, basic_vars)
+		@debug("P $P")
 
-	pivotal_row = zeros(length(P))
-
-	@sync begin
-		for p in P
-			pi = @spawn BTRAN(invB, p)
-			pivotal_row = @spawn PRICE(N, fetch(pi))
-			t = fetch(pivotal_row)
-			@debug("t $t")
-			# pivotal_row[p]
+		pivotal_rows = []
+		@sync begin
+			for p in P
+				pi = @spawn BTRAN(invB, p)
+				pi = fetch(pi)
+				@debug("pi $pi")
+				pivotal_row = @spawn PRICE(N, pi)
+				pivotal_row = fetch(pivotal_row)
+				@debug("pivotal_row $pivotal_row")
+				push!(pivotal_rows, pivotal_row)
+			end
 		end
+
+		while !isempty(P)
+			p = CHUZR_MI(P)
+			@debug("p $p")
+			q = CHUZC(m.c[m.nonbasis], pivotal_rows[1])
+			@debug("q $q")
+			UPDATE_MI()
+		end
+
+		basis_change = []
+		for change in basis_change
+			FTRAN1()
+			FTRAN2()
+
+			magic_condition = false
+
+			if magic_condition
+				INVERT()
+			else
+				UPDATE()
+			end
+		end
+
+		terminate = true
 	end
 
-	@debug("pivotal_row $pivotal_row")
+
+	# invB = SharedArray(typeof(B[1]), size(B),
+	# 	init = S -> S[linearindices(B)] = inv(B)[linearindices(B)])
+
+
+	# pivotal_rows = []
+	#
+	# @sync begin
+	# 	for p in P
+	# 		pi = @spawn BTRAN(invB, p)
+	# 		pivotal_row = @spawn PRICE(N, fetch(pi))
+	# 		push!(pivotal_rows, fetch(pivotal_row))
+	# 	end
+	# end
+	#
+	# @debug("pivotal_rows $pivotal_rows")
+	#
+	# while !isempty(pivotal_rows)
+	# 	t = pop!(pivotal_rows)
+	# 	@debug("took $t")
+	# end
 end
 
 function status(m::DrsMathProgModel)
