@@ -18,36 +18,44 @@ function CHUZR(invB, basic_vars)
 	e = eye(r)
 	rations = [basic_vars[i] / norm(invB * e[:,i]) for i in 1:r]
   println("CHUZR b/s $rations")
-	collect(take(sortperm(rations, rev=true), nprocs()))
+	p = collect(take(sortperm(rations, rev=true), 1))
+  return p[1]
 end
 
 function BTRAN(invB, p)
   r, c = size(invB)
 	e = eye(r)
-	e[:,p]' * invB
+	return e[:,p]' * invB
 end
 
 function PRICE(N, pi)
   println("PRICE pid $(myid())")
-  pi * N
+  return pi * N
 end
 
 function CHUZR_MI(P)
   splice!(P, 1)
 end
 
-function CHUZC(c, a)
-  println("c $c, a $a")
-  @assert length(c) == length(a)
-  rations = [c[i] / a[i] for i in 1:length(c)]
+function CHUZC(c, a, nonbasis)
+  cn = c[nonbasis]
+  @assert length(cn) == length(a)
+  rations = [cn[i] / a[i] for i in 1:length(a)]
   println("rations $rations")
-  collect(take(sortperm(rations), 1))
+  q = collect(take(sortperm(rations), 1))
+  q = q[1]
+  b = cn[q] / a[q]
+  c[nonbasis] -= b * a'
+  return q
 end
 
 function UPDATE_MI()
 end
 
-function FTRAN1()
+function FTRAN1(A, invB, basic_vars, pivotal_row, p, q)
+  alpha = (basic_vars[p] / pivotal_row[q])[1]
+  aq = invB * A[:,q]
+  basic_vars[:] -= alpha * aq
 end
 
 function FTRAN2()
