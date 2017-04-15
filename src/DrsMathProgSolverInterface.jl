@@ -29,6 +29,7 @@ type DrsMathProgModel <: AbstractLinearQuadraticModel
     c               # objective coefficients
     basis           # basis variables
     nonbasis        # nonbasis variables
+    status          # solution status
 end
 LinearQuadraticModel(s::DrsMathProgSolver) = DrsMathProgModel(; s.options...)
 
@@ -47,7 +48,7 @@ function setparameters!(m::Union{DrsMathProgSolver, DrsMathProgModel}; kwargs...
 end
 
 function DrsMathProgModel(; kwargs...)
-    m = DrsMathProgModel(0, 0, 0, 0, 0)
+    m = DrsMathProgModel(0, 0, 0, 0, 0, 0)
     setparameters!(m; kwargs...)
     m
 end
@@ -59,6 +60,9 @@ function loadproblem!(m::DrsMathProgModel, A, l, u, c, lb, ub, sense)
     m.c = c
 
     DrsTransformToStandardForm!(m, lb, ub, sense)
+
+    m.A = [1 m.c'; [zeros(length(m.b)) m.A]]
+    m.b = [0; m.b]
 
     r, c = size(m.A)
     m.basis = zeros(Int, r)
@@ -161,43 +165,72 @@ function optimize!(m::DrsMathProgModel)
     @debug("basis $(m.basis)")
     @debug("nonbasis $(m.nonbasis)")
 
-    B = m.A[:,m.basis]
-    @debug("B $B")
+    iter = 0
+    maxiter = 3
+    while (iter += 1) <= maxiter
+        @debug("ITERATION $iter")
 
-    N = m.A[:,m.nonbasis]
-    @debug("N $N")
+        @debug("basis $(m.basis)")
+        @debug("nonbasis $(m.nonbasis)")
 
-    invB = inv(B)
-    @debug("invB $invB")
+        N = m.A[:,m.nonbasis]
+        @debug("N $N")
 
-    basic_vars = invB * m.b
-    @debug("basic_vars $basic_vars")
+        B = m.A[:,m.basis]
+        @debug("B $B")
 
-    terminate = false
-    while !terminate
-        P = CHUZR(invB, basic_vars)
-        @debug("P $P")
+        invB = inv(B)
+        @debug("invB $invB")
 
-        pi = BTRAN(invB, P)
-        @debug("pi $pi")
+        delta = invB[1,:]' * N
+        @debug("delta $delta")
 
-        pivotal_row = PRICE(N, pi)
-        @debug("a $pivotal_row")
+        incoming = indmin(delta)
+        @debug("incoming $incoming")
 
-        @debug("c $(m.c)")
-        q = CHUZC(m.c, pivotal_row, m.nonbasis)
-        @debug("q $q")
-        @debug("c $(m.c)")
+        if delta[incoming] > 0
+            @debug("optimal")
+            m.status = :Optimal
+            break
+        end
 
-        @debug("basic_vars $basic_vars")
-        FTRAN1(m.A, invB, basic_vars, pivotal_row, P, q)
-        @debug("basic_vars $basic_vars")
+        Xk = invB * N[:,incoming]
+        @debug("Xk $Xk")
 
-        basis[P], nonbasis[q] = nonbasis[q], basis[P]
+        theta = m.b[2:end] ./ Xk[2:end]
+        @debug("theta $theta")
 
-        terminate = true
+        outgoing = indmin(theta) + 1
+        @debug("outgoing $outgoing")
+
+        rect = [invB[:,2:end] m.b Xk]
+        @debug("rect $rect")
+
+        # gaussian elimination
+        c, r = size(rect)
+
+        rect[outgoing,:] /= rect[outgoing,end]
+
+        for i in 1:c
+        	if i != outgoing
+        		rect[i,:] -= rect[outgoing,:] * rect[i,end]
+        	end
+        end
+
+        @debug("rect $rect")
+
+        m.b = rect[:,end-1]
+    	@debug("b $(m.b)")
+
+    	invB[:,2:end] = rect[:,1:end-2]
+    	@debug("invB $invB")
+
+    	m.basis[outgoing], m.nonbasis[incoming] = m.nonbasis[incoming], m.basis[outgoing]
     end
 
+    @debug("objval $(m.b[1])")
+    @debug("optimal $(m.b[m.basis[2:end]])")
+    @debug("basis $(m.basis)")
 
     # invB = SharedArray(typeof(B[1]), size(B),
     #     init = S -> S[linearindices(B)] = inv(B)[linearindices(B)])
@@ -223,6 +256,7 @@ end
 
 function status(m::DrsMathProgModel)
     @debug("status")
+    m.status
 end
 
 function getreducedcosts(m::DrsMathProgModel)
@@ -235,10 +269,12 @@ end
 
 function getobjval(m::DrsMathProgModel)
     @debug("getobjval")
+    m.b[1]
 end
 
 function getsolution(m::DrsMathProgModel)
     @debug("getsolution")
+    m.b[m.basis[2:end]]
 end
 
 end
