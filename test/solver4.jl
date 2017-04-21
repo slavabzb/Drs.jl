@@ -14,5 +14,5 @@ c = Float64[-1, -2]
 s = linprog(c, A, '<', b, -Inf, Inf, DrsMathProgSolver(LogLevel=DEBUG))
 
 @test s.status == :Optimal
-@test s.objval == 5
+@test s.objval == -5
 @test s.sol == [0, 5/2]

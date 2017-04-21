@@ -30,6 +30,8 @@ type DrsMathProgModel <: AbstractLinearQuadraticModel
     basis           # basis variables
     nonbasis        # nonbasis variables
     status          # solution status
+    objval          # objective value
+    solution        # solution
 end
 LinearQuadraticModel(s::DrsMathProgSolver) = DrsMathProgModel(; s.options...)
 
@@ -48,7 +50,7 @@ function setparameters!(m::Union{DrsMathProgSolver, DrsMathProgModel}; kwargs...
 end
 
 function DrsMathProgModel(; kwargs...)
-    m = DrsMathProgModel(0, 0, 0, 0, 0, 0)
+    m = DrsMathProgModel(0, 0, 0, 0, 0, 0, 0, 0)
     setparameters!(m; kwargs...)
     m
 end
@@ -64,14 +66,12 @@ function loadproblem!(m::DrsMathProgModel, A, l, u, c, lb, ub, sense)
     m.A = [1 m.c'; [zeros(length(m.b)) m.A]]
     m.b = [0; m.b]
 
-    r, c = size(m.A)
-    m.basis = zeros(Int, r)
-
     DrsFindPotentialBasis!(m)
 end
 
 function DrsFindPotentialBasis!(m::DrsMathProgModel)
     r, c = size(m.A)
+    m.basis = zeros(Int, r)
     for ic in 1:c
         column = m.A[:,ic]
         if countnz(column) == 1
@@ -165,6 +165,8 @@ function optimize!(m::DrsMathProgModel)
     @debug("basis $(m.basis)")
     @debug("nonbasis $(m.nonbasis)")
 
+    nonbasis_orig = m.nonbasis[:]
+
     iter = 0
     maxiter = 3
     while (iter += 1) <= maxiter
@@ -188,7 +190,7 @@ function optimize!(m::DrsMathProgModel)
         incoming = indmin(delta)
         @debug("incoming $incoming")
 
-        if delta[incoming] > 0
+        if delta[incoming] >= 0
             @debug("optimal")
             m.status = :Optimal
             break
@@ -228,9 +230,21 @@ function optimize!(m::DrsMathProgModel)
     	m.basis[outgoing], m.nonbasis[incoming] = m.nonbasis[incoming], m.basis[outgoing]
     end
 
-    @debug("objval $(m.b[1])")
-    @debug("optimal $(m.b[m.basis[2:end]])")
+    m.objval = -m.b[1]
+
+    m.solution = zeros(length(nonbasis_orig))
+
+    for (i, v) in enumerate(nonbasis_orig)
+        if v in m.basis
+            m.solution[i] = m.b[v]
+        end
+    end
+
     @debug("basis $(m.basis)")
+    @debug("nonbasis_orig $nonbasis_orig")
+    @debug("b $(m.b)")
+    @debug("objval $(m.objval)")
+    @debug("solution $(m.solution)")
 
     # invB = SharedArray(typeof(B[1]), size(B),
     #     init = S -> S[linearindices(B)] = inv(B)[linearindices(B)])
@@ -269,12 +283,12 @@ end
 
 function getobjval(m::DrsMathProgModel)
     @debug("getobjval")
-    m.b[1]
+    m.objval
 end
 
 function getsolution(m::DrsMathProgModel)
     @debug("getsolution")
-    m.b[m.basis[2:end]]
+    m.solution
 end
 
 end
