@@ -234,8 +234,8 @@ function optimize!(m::DrsMathProgModel)
 
     m.solution = zeros(length(nonbasis_orig))
 
-    for (i, v) in enumerate(nonbasis_orig)
-        if v in m.basis
+    for (i, v) in enumerate(m.basis[2:end])
+        if v in nonbasis_orig
             m.solution[i] = m.b[v]
         end
     end
