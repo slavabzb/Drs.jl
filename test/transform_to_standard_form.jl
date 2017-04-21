@@ -16,14 +16,14 @@ mA = [1 0 1 0 0 0;
       3 2 0 -1 0 1]
 mc = [-3, -5, 0, 0, 0, 0]
 
-m = DrsMathProgModel(A, b, c, nothing, nothing)
+m = DrsMathProgModel(A, b, c, 0, 0, 0, 0, 0)
 Drs.DrsMathProgSolverInterface.DrsTransformToStandardForm!(m, lb, ub, :Min)
 
 @test m.A == mA
 @test m.b == b
 @test m.c == mc
 
-m = DrsMathProgModel(A, b, c, nothing, nothing)
+m = DrsMathProgModel(A, b, c, 0, 0, 0, 0, 0)
 Drs.DrsMathProgSolverInterface.DrsTransformToStandardForm!(m, lb, ub, :Max)
 
 @test m.A == mA
@@ -44,14 +44,14 @@ mA = [1 0 -1 0 0 1 0 0;
       3 2 0 0 -1 0 0 1]
 mc = [-3, -5, 0, 0, 0, 0, 0, 0]
 
-m = DrsMathProgModel(A, b, c, nothing, nothing)
+m = DrsMathProgModel(A, b, c, 0, 0, 0, 0, 0)
 Drs.DrsMathProgSolverInterface.DrsTransformToStandardForm!(m, lb, ub, :Min)
 
 @test m.A == mA
 @test m.b == b
 @test m.c == mc
 
-m = DrsMathProgModel(A, b, c, nothing, nothing)
+m = DrsMathProgModel(A, b, c, 0, 0, 0, 0, 0)
 Drs.DrsMathProgSolverInterface.DrsTransformToStandardForm!(m, lb, ub, :Max)
 
 @test m.A == mA
@@ -73,7 +73,7 @@ mA = [-1 0 -1 0 0 1;
 mb = [180, 150, 300]
 mc = [-3, -5, 0, 0, 0, 0]
 
-m = DrsMathProgModel(A, b, c, nothing, nothing)
+m = DrsMathProgModel(A, b, c, 0, 0, 0, 0, 0)
 Drs.DrsMathProgSolverInterface.DrsTransformToStandardForm!(m, lb, ub, :Min)
 
 @test m.A == mA
@@ -95,7 +95,7 @@ mA = [1 0 1 0 0 0;
 mb = [0, 0, 0]
 mc = [-3, -5, 0, 0, 0, 0]
 
-m = DrsMathProgModel(A, b, c, nothing, nothing)
+m = DrsMathProgModel(A, b, c, 0, 0, 0, 0, 0)
 Drs.DrsMathProgSolverInterface.DrsTransformToStandardForm!(m, lb, ub, :Min)
 
 @test m.A == mA
@@ -115,14 +115,14 @@ mA = [3 5 2 0 0 1 0; 4 4 4 -1 0 0 1; 2 4 5 0 1 0 0]
 mb = [60, 72, 100]
 mc = [5, 10, 8, 0, 0, 0, 0]
 
-m = DrsMathProgModel(A, b, c, nothing, nothing)
+m = DrsMathProgModel(A, b, c, 0, 0, 0, 0, 0)
 Drs.DrsMathProgSolverInterface.DrsTransformToStandardForm!(m, lb, ub, :Min)
 
 @test m.A == mA
 @test m.b == mb
 @test m.c == mc
 
-m = DrsMathProgModel(A, b, c, nothing, nothing)
+m = DrsMathProgModel(A, b, c, 0, 0, 0, 0, 0)
 Drs.DrsMathProgSolverInterface.DrsTransformToStandardForm!(m, lb, ub, :Max)
 
 @test m.A == mA
