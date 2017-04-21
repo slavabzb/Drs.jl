@@ -2,7 +2,7 @@
 
 tests = [
 	"transform_to_standard_form",
-	#"find_potential_basis",
+	"find_potential_basis",
 	"solver4"
 ]
 
