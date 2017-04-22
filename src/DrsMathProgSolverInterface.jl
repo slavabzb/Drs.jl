@@ -29,25 +29,26 @@ type DrsMathProgModel <: AbstractLinearQuadraticModel
     status          # solution status
     objval          # objective value
     solution        # solution
+    maxiter         # max iteration number
 end
 LinearQuadraticModel(s::DrsMathProgSolver) = DrsMathProgModel(; s.options...)
 
 function setparameters!(m::Union{DrsMathProgSolver, DrsMathProgModel}; kwargs...)
     for (option, value) in kwargs
-        if option == :TimeLimit
-            println("WARNING: TODO: $option")
+        if option == :MaxIter
+            m.maxiter = value
         elseif option == :Silent && value == true
             Logging.configure(level=OFF)
         elseif option == :LogLevel
             Logging.configure(level=value)
         else
-            println("WARNING: $option is unsupported")
+            warn("option $option is unsupported")
         end
     end
 end
 
-function DrsMathProgModel(; kwargs...)
-    m = DrsMathProgModel(0, 0, 0, 0, 0, 0, 0, 0)
+function DrsMathProgModel(A=0, b=0, c=0; kwargs...)
+    m = DrsMathProgModel(A, b, c, 0, 0, 0, 0, 0, 20)
     setparameters!(m; kwargs...)
     m
 end
@@ -171,8 +172,7 @@ function optimize!(m::DrsMathProgModel)
     @debug("invB $invB")
 
     iter = 0
-    maxiter = 5
-    while (iter += 1) <= maxiter
+    while true
         @debug("ITERATION $iter")
 
         @debug("basis $(m.basis)")
@@ -234,6 +234,12 @@ function optimize!(m::DrsMathProgModel)
     	invB[:,2:end] = rect[:,1:end-2]
 
     	m.basis[outgoing], m.nonbasis[incoming] = m.nonbasis[incoming], m.basis[outgoing]
+
+        iter += 1
+        if iter >= m.maxiter
+            m.status = :UserLimit
+            break
+        end
     end
 
     m.objval = -m.b[1]
