@@ -7,9 +7,8 @@ julia:
     - 0.5
     - nightly
 script:
-    julia -e 'Pkg.clone("https://github.com/lpsusu/Drs.jl.git", "LPLib")'
-    julia -e 'Pkg.test("LPLib", coverage=true)'
+    julia -e 'Pkg.clone("https://github.com/lpsusu/Drs.jl.git", "Drs")'
+    julia -e 'Pkg.test("Drs", coverage=true)'
 after_success:
     - julia -e 'Pkg.add("Coverage")'
-    - julia -e 'cd(Pkg.dir("LPLib")); using Coverage; Coveralls.submit(process_folder())'
-
+    - julia -e 'cd(Pkg.dir("Drs")); using Coverage; Coveralls.submit(process_folder())'

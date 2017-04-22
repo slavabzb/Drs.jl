@@ -1,11 +1,14 @@
 #!/usr/bin/env julia
 
-using Base.Test
+tests = [
+	"transform_to_standard_form",
+	"find_potential_basis",
+	"solver1",
+	"solver2",
+	"solver3",
+	"solver4"
+]
 
-DIR = dirname(@__FILE__())
-
-for test in readdir(DIR)
-	if ismatch(r"^(?(?=runtests)$|.+\.jl$)", test)
-		include("$(test)")
-	end
+for t in tests
+	include("$t.jl")
 end
