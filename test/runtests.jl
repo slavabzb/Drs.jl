@@ -3,7 +3,7 @@
 tests = [
 	"transform_to_standard_form",
 	"find_potential_basis",
-	"solver",
+	"solver1",
 	"solver2",
 	"solver3",
 	"solver4"
