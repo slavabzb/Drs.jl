@@ -1,8 +1,5 @@
 module DrsMathProgSolverInterface
 
-include("Simplex.jl")
-using .Simplex
-
 using Logging
 @Logging.configure(level=DEBUG)
 
