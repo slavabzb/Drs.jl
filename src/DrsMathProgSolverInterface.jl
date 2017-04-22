@@ -167,8 +167,14 @@ function optimize!(m::DrsMathProgModel)
 
     nonbasis_orig = m.nonbasis[:]
 
+    B = m.A[:,m.basis]
+    @debug("B $B")
+
+    invB = inv(B)
+    @debug("invB $invB")
+
     iter = 0
-    maxiter = 3
+    maxiter = 5
     while (iter += 1) <= maxiter
         @debug("ITERATION $iter")
 
@@ -178,11 +184,13 @@ function optimize!(m::DrsMathProgModel)
         N = m.A[:,m.nonbasis]
         @debug("N $N")
 
-        B = m.A[:,m.basis]
-        @debug("B $B")
+        # B = m.A[:,m.basis]
+        # @debug("B $B")
 
-        invB = inv(B)
+        #invB = inv(B)
         @debug("invB $invB")
+
+        @debug("b $(m.b)")
 
         delta = invB[1,:]' * N
         @debug("delta $delta")
@@ -202,7 +210,10 @@ function optimize!(m::DrsMathProgModel)
         theta = m.b[2:end] ./ Xk[2:end]
         @debug("theta $theta")
 
-        outgoing = indmin(theta) + 1
+        # only positive
+        positive = [i for i in theta if i > 0]
+        idx = indmin(positive)
+        outgoing = findfirst(x -> x == positive[idx], theta) + 1
         @debug("outgoing $outgoing")
 
         rect = [invB[:,2:end] m.b Xk]
@@ -222,10 +233,8 @@ function optimize!(m::DrsMathProgModel)
         @debug("rect $rect")
 
         m.b = rect[:,end-1]
-    	@debug("b $(m.b)")
 
     	invB[:,2:end] = rect[:,1:end-2]
-    	@debug("invB $invB")
 
     	m.basis[outgoing], m.nonbasis[incoming] = m.nonbasis[incoming], m.basis[outgoing]
     end
@@ -234,38 +243,20 @@ function optimize!(m::DrsMathProgModel)
 
     m.solution = zeros(length(nonbasis_orig))
 
-    for (i, v) in enumerate(m.basis[2:end])
-        if v in nonbasis_orig
-            m.solution[i] = m.b[v]
-        end
-    end
-
     @debug("basis $(m.basis)")
     @debug("nonbasis_orig $nonbasis_orig")
     @debug("b $(m.b)")
     @debug("objval $(m.objval)")
     @debug("solution $(m.solution)")
 
-    # invB = SharedArray(typeof(B[1]), size(B),
-    #     init = S -> S[linearindices(B)] = inv(B)[linearindices(B)])
+    for (i, v) in enumerate(nonbasis_orig)
+        j = findfirst(x -> x == v, m.basis)
+        if j > 0
+            m.solution[i] = m.b[j]
+        end
+    end
 
-
-    # pivotal_rows = []
-    #
-    # @sync begin
-    #     for p in P
-    #         pi = @spawn BTRAN(invB, p)
-    #         pivotal_row = @spawn PRICE(N, fetch(pi))
-    #         push!(pivotal_rows, fetch(pivotal_row))
-    #     end
-    # end
-    #
-    # @debug("pivotal_rows $pivotal_rows")
-    #
-    # while !isempty(pivotal_rows)
-    #     t = pop!(pivotal_rows)
-    #     @debug("took $t")
-    # end
+    @debug("solution $(m.solution)")
 end
 
 function status(m::DrsMathProgModel)
